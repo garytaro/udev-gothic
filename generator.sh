@@ -549,11 +549,12 @@ elseif (${W35_FLAG} == 1)
 endif
 _EOT_
 
-/usr/local/bin/fontforge -script ${WORK_DIR}/${GEN_SCRIPT_JBMONO}
+/usr/bin/fontforge -script ${WORK_DIR}/${GEN_SCRIPT_JBMONO}
 
 for f in `ls "${WORK_DIR}/${FAMILYNAME}"*.ttf`
 do
-  python3 -m ttfautohint -l 6 -r 45 -a nnn -D latn -f none -S -W -X "13-" -I "$f" "${f}_hinted"
+  # python3 -m ttfautohint -l 6 -r 45 -a nnn -D latn -f none -S -W -X "13-" -I "$f" "${f}_hinted"
+  ttfautohint -l 6 -r 45 -a nnn -D latn -f none -S -W -X "13-" -I "$f" "${f}_hinted"
 done
 
 # vhea, vmtxテーブル削除
