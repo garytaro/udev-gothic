@@ -4,7 +4,7 @@ UDEV Gothic は、ユニバーサルデザインフォントの [BIZ UDゴシッ
 
 BIZ UDゴシックの優れた機能美はそのままに、調和的で判読性の高い英数字を提供することを目指しています。
 
-[👉 ダウンロード](https://github.com/yuru7/udev-gothic/releases)  
+[👉 ダウンロード](https://github.com/yuru7/udev-gothic/releases/latest)  
 ※「Assets」内の zip ファイルをダウンロードしてご利用ください。
 
 > 💡 その他、公開中のプログラミングフォント
@@ -44,6 +44,7 @@ sudo python2 -m pip install fonttools
 | 日本語文書向け | 日本語文書で頻出する記号類 ( `← ↓ ↑ → □ ■ …` など) がBIZ UDゴシックの全角記号で表示される。 ※通常版の UDEV Gothic では、JetBrains Mono のグリフが優先されるため半角で表示される。 (全角表示されるようになる記号一覧は [こちら](doc/JPDOC.txt)) | `UDEVGothic*JPDOC*-*.ttf`<br>※ファイル名に `JPDOC` が含まれたもの |
 | リガチャ対応版 | JetBrains Mono に含まれるリガチャに対応したバリエーション。 | `UDEVGothic*LG*-*.ttf`<br>※ファイル名に `LG` が含まれたもの |
 | Nerd Fonts 対応版 | [Nerd Fonts](https://www.nerdfonts.com/) を追加合成したバリエーション。拡張Powerline記号など、お洒落なターミナルで利用される記号を収録。 | `UDEVGothic*NF*-*.ttf`<br>※ファイル名に `NF` が含まれたもの |
+| 全角スペース不可視版 | 全角スペースが一般的なフォントと同様に表示されないバリエーション。コーディング用途以外での利用など、全角スペース表示が煩わしいときにオススメ。 | `UDEVGothic*HS*-*.ttf`<br>※ファイル名に `HS` が含まれたもの |
 
 ## 表示サンプル
 
@@ -54,6 +55,33 @@ sudo python2 -m pip install fonttools
 | リガチャ ON | リガチャ OFF |
 | :---: | :---: |
 | ![image](https://user-images.githubusercontent.com/13458509/159891788-b97865ee-9b94-4691-b44e-f39f55a8bdef.png) | ![image](https://user-images.githubusercontent.com/13458509/159892000-99b356e5-42d0-4007-85eb-424abc386a05.png) |
+
+## ビルド
+
+環境:
+
+- fontforge: `20230101` \[[Windows](https://fontforge.org/en-US/downloads/windows/)\] \[[Linux](https://fontforge.org/en-US/downloads/gnulinux/)\]
+- Python: `>=3.12`
+
+### Windows (PowerShell Core)
+
+```sh
+# 必要パッケージのインストール
+pip install -r requirements.txt
+# ビルド
+& "C:\Program Files (x86)\FontForgeBuilds\bin\ffpython.exe" .\fontforge_script.py && python3 .\fonttools_script.py
+```
+
+### ビルドオプション
+
+`fontforge_script.py` 実行時、以下のオプションを指定できます。
+
+- `--35`: 半角3:全角5 の幅にする
+- `--jpdoc`: 日本語文書頻出記号を全角にする
+- `--nerd-font`: Nerd Fonts を追加合成する
+- `--liga`: リガチャを加える
+- `--hidden-zenkaku-space`: 全角スペース可視化を無効化
+- `--dot-zero`: `0` をドットゼロにする
 
 ## ライセンス
 
