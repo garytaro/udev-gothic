@@ -12,18 +12,6 @@ BIZ UDゴシックの優れた機能美はそのままに、調和的で判読�
 > - 日本語文字に IBM Plex Sans JP、英数字部分に IBM Plex Mono を使った [**PlemolJP (プレモル ジェイピー)**](https://github.com/yuru7/PlemolJP)
 > - 日本語文字に源真ゴシック、英数字部分に Fira Mono を使った [**Firge (ファージ)**](https://github.com/yuru7/Firge)
 
-
-## 環境設定
-
-以下、wsl ubuntu20.04で実施
-
-```sh
-sudo apt install ttfautohint
-curl https://bootstrap.pypa.io/pip/2.7/get-pip.py --output get-pip.py
-sudo python2 get-pip.py
-sudo python2 -m pip install fonttools
-```
-
 ## 特徴
 
 以下の特徴を備えています。
@@ -67,9 +55,13 @@ sudo python2 -m pip install fonttools
 
 ```sh
 # 必要パッケージのインストール
+conda create -n udev-gothic python=3.12 -y
+conda activate udev-gothic
+
 pip install -r requirements.txt
 # ビルド
-& "C:\Program Files (x86)\FontForgeBuilds\bin\ffpython.exe" .\fontforge_script.py && python3 .\fonttools_script.py
+# & "C:\Program Files (x86)\FontForgeBuilds\bin\ffpython.exe" .\fontforge_script.py && python3 .\fonttools_script.py
+make.ps1
 ```
 
 ### ビルドオプション
