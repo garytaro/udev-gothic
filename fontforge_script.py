@@ -78,6 +78,10 @@ def main():
         eng_style="Regular",
         merged_style="Regular",
     )
+
+    if options.get("debug"):
+        return
+
     generate_font(
         jp_style="Bold",
         eng_style="Bold",
@@ -127,6 +131,8 @@ def get_options():
             options["liga"] = True
         elif arg == "--dot-zero":
             options["dot-zero"] = True
+        elif arg == "--debug":
+            options["debug"] = True
         else:
             options["unknown-option"] = True
             return
@@ -244,9 +250,6 @@ def open_fonts(jp_style: str, eng_style: str):
             SOURCE_FONTS_DIR + "/" + ENG_FONT.replace("{style}", eng_style)
         )
 
-    # fonttools merge エラー対処
-    jp_font = altuni_to_entity(jp_font)
-
     # フォント参照を解除する
     for glyph in jp_font.glyphs():
         if glyph.isWorthOutputting():
@@ -260,47 +263,6 @@ def open_fonts(jp_style: str, eng_style: str):
     eng_font.selection.none()
 
     return jp_font, eng_font
-
-
-def altuni_to_entity(jp_font):
-    """Alternate Unicodeで透過的に参照して表示している箇所を実体のあるグリフに変換する"""
-    for glyph in jp_font.glyphs():
-        if glyph.altuni is not None:
-            # 以下形式のタプルで返ってくる
-            # (unicode-value, variation-selector, reserved-field)
-            # 第3フィールドは常に0なので無視
-            altunis = glyph.altuni
-
-            # variation-selectorがなく (-1)、透過的にグリフを参照しているものは実体のグリフに変換する
-            before_altuni = ""
-            for altuni in altunis:
-                # 直前のaltuniと同じ場合はスキップ
-                if altuni[1] == -1 and before_altuni != ",".join(map(str, altuni)):
-                    glyph.altuni = None
-                    copy_target_unicode = altuni[0]
-                    try:
-                        copy_target_glyph = jp_font.createChar(
-                            copy_target_unicode,
-                            f"uni{hex(copy_target_unicode).replace('0x', '').upper()}copy",
-                        )
-                    except Exception:
-                        copy_target_glyph = jp_font[copy_target_unicode]
-                    copy_target_glyph.clear()
-                    copy_target_glyph.width = glyph.width
-                    # copy_target_glyph.addReference(glyph.glyphname)
-                    jp_font.selection.select(glyph.glyphname)
-                    jp_font.copy()
-                    jp_font.selection.select(copy_target_glyph.glyphname)
-                    jp_font.paste()
-                before_altuni = ",".join(map(str, altuni))
-    # エンコーディングの整理のため、開き直す
-    font_path = f"{BUILD_FONTS_DIR}/{jp_font.fullname}_{uuid.uuid4()}.ttf"
-    jp_font.generate(font_path)
-    jp_font.close()
-    reopen_jp_font = fontforge.open(font_path)
-    # 一時ファイルを削除
-    os.remove(font_path)
-    return reopen_jp_font
 
 
 def adjust_some_glyph(jp_font, eng_font):
@@ -331,7 +293,41 @@ def adjust_some_glyph(jp_font, eng_font):
         except TypeError:
             # グリフが存在しない場合は継続する
             continue
+    # 一部の全角記号の可読性を上げるため拡大する
+    for uni in [0xFF1B, 0xFF1A, 0xFF07, 0xFF02, 0xFF0C, 0xFF0E] + list(
+        range(0x2018, 0x201F + 1)
+    ):
+        try:
+            glyph = jp_font[uni]
+            if glyph.isWorthOutputting():
+                scale_glyph_from_center(glyph, 1.15, 1.2)
+        except TypeError:
+            # グリフが存在しない場合は継続する
+            continue
     jp_font.selection.none()
+
+
+def scale_glyph_from_center(glyph, scale_x, scale_y):
+    """グリフの中心位置を基点としたスケール調整"""
+    original_width = glyph.width
+    # スケール前の中心位置を求める
+    before_bb = glyph.boundingBox()
+    before_center_x = (before_bb[0] + before_bb[2]) / 2
+    before_center_y = (before_bb[1] + before_bb[3]) / 2
+    # スケール変換
+    glyph.transform(psMat.scale(scale_x, scale_y))
+    # スケール後の中心位置を求める
+    after_bb = glyph.boundingBox()
+    after_center_x = (after_bb[0] + after_bb[2]) / 2
+    after_center_y = (after_bb[1] + after_bb[3]) / 2
+    # 拡大で増えた分を考慮して中心位置を調整
+    glyph.transform(
+        psMat.translate(
+            before_center_x - after_center_x,
+            before_center_y - after_center_y,
+        )
+    )
+    glyph.width = original_width
 
 
 def slash_zero(eng_font, style):
@@ -353,6 +349,9 @@ def delete_duplicate_glyphs(jp_font, eng_font):
 
     eng_font.selection.none()
     jp_font.selection.none()
+
+    # TODO 今後、BIZ UDゴシックのアップデートでCMAPが拡張されaltuniでU+0000の異体字セレクタが増えたら
+    #      それを考慮した処理をここらへんに書く必要あり。PlemolJPを参考にする
 
     for glyph in jp_font.glyphs("encoding"):
         try:
@@ -464,6 +463,7 @@ def remove_jpdoc_symbols(eng_font):
     # ⊆-⊇ (U+2286-U+2287)
     eng_font.selection.select(("more", "ranges"), 0x2286, 0x2287)
     # ─-╿ (Box Drawing) (U+2500-U+257F)
+    # TODO 日本語フォントに存在するものだけ削除して、存在しないものは全角化する
     eng_font.selection.select(("more", "ranges"), 0x2500, 0x257F)
     for glyph in eng_font.selection.byGlyphs:
         if glyph.isWorthOutputting():
@@ -661,20 +661,7 @@ def add_nerd_font_glyphs(jp_font, eng_font):
             # 幅を調整する
             half_width = eng_font[0x0030].width
             # Powerline Symbols の調整
-            if 0xE0B0 <= nerd_glyph.unicode <= 0xE0D4:
-                # なぜかズレている右付きグリフの個別調整 (EM 1000 に変更した後を想定して調整)
-                original_width = nerd_glyph.width
-                if nerd_glyph.unicode == 0xE0B2:
-                    nerd_glyph.transform(psMat.translate(-353 * 2.024, 0))
-                elif nerd_glyph.unicode == 0xE0B6:
-                    nerd_glyph.transform(psMat.translate(-414 * 2.024, 0))
-                elif nerd_glyph.unicode == 0xE0C5:
-                    nerd_glyph.transform(psMat.translate(-137 * 2.024, 0))
-                elif nerd_glyph.unicode == 0xE0C7:
-                    nerd_glyph.transform(psMat.translate(-214 * 2.024, 0))
-                elif nerd_glyph.unicode == 0xE0D4:
-                    nerd_glyph.transform(psMat.translate(-314 * 2.024, 0))
-                nerd_glyph.width = original_width
+            if 0xE0B0 <= nerd_glyph.unicode <= 0xE0D7:
                 # 位置と幅合わせ
                 if nerd_glyph.width < half_width:
                     nerd_glyph.transform(
